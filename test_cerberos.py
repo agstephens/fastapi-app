@@ -5,6 +5,8 @@ print("[WARNING] Filtering out warnings at the moment")
 warnings.filterwarnings("ignore")
 
 
+UNDEFINED = "UNDEFINED"
+
 class MyValidator(Validator):
 
   def _validate_allowed_values_dependencies(self, dummy, field, value):
@@ -15,7 +17,11 @@ class MyValidator(Validator):
       dep_rules = self._config['schema'][field]['allowed_values_dependencies']
     
       for ext_field, ext_dep in dep_rules.items():
-          ext_field_value = self.document[ext_field]
+
+          ext_field_value = self.document.get(ext_field, UNDEFINED)
+          if ext_field_value == UNDEFINED:
+              self._error(field, f"'{field}' requires a value set for '{ext_field}'.")
+
           ext_dep_values, allowed_values = list(ext_dep.items())[0]
 
           if ext_field_value in ext_dep_values and value not in allowed_values:
@@ -25,9 +31,10 @@ class MyValidator(Validator):
 
 
 schema = {'a': {'allowed': [1, 2]},
-          'b': {'check_with': 'values_dependent',
-                'allowed_values_dependencies': {'a': {frozenset([1]): ['b_a1']},
-                                                'a': {frozenset([2]): ['b_a2']}}
+          'b': {'dependencies': ['a'],
+                'check_with': 'values_dependent',
+                'allowed_values_dependencies': {'a': {(1,): ['b_a1']},
+                                                'a': {(2,): ['b_a2']}}
                }
          }
 
@@ -44,3 +51,11 @@ print("Testing:", doc)
 print(v.validate(doc))
 assert v.errors == {'b': ["Value for 'b' is forbidden by schema."]}
 print(v.errors)
+
+print()
+doc = {'b': 'b_a1'}
+print("Testing:", doc)
+print(v.validate(doc))
+#assert v.errors == {'b': ["Value for 'b' is forbidden by schema."]}
+print(v.errors)
+
