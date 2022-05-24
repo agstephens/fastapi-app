@@ -1,0 +1,5 @@
+hypercorn
+cerberus
+pydantic
+typing
+fastapi
